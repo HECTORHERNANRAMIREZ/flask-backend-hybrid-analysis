@@ -25,7 +25,10 @@ def analizar_archivo_para_flutter():
         return "No se envió ningún archivo", 400
 
     archivo = request.files['file']
-    files = {'file': (archivo.filename, archivo.stream)}
+    files = {
+        'file': (archivo.filename, archivo.stream),
+        'environment_id': (None, '310')  # ✅ Agregado aquí (310 = Windows 10 64-bit)
+    }
     headers = {
         "User-Agent": "Falcon Sandbox",
         "api-key": API_KEY

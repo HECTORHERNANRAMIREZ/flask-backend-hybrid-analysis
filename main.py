@@ -1,75 +1,72 @@
 from flask import Flask, request, jsonify
 import requests
 import time
-import os
 
 app = Flask(__name__)
 
-# ✅ Carga la API KEY desde variable de entorno en Railway
-API_KEY = os.getenv("API_KEY")
-
-# 🔍 Diagnóstico para depurar problemas de API_KEY
-print("🔐 API_KEY cargada:", repr(API_KEY))
-if not API_KEY or len(API_KEY.strip()) < 30:
-    print("❌ ERROR: La API_KEY está vacía o mal configurada")
+# ✅ Clave API de VirusTotal (registrada previamente)
+VT_API_KEY = "3ea4bd8bfc3532211cde4598a2d2aaf515c86bfc975703c73817a9ca596f59ca"
+headers = {
+    "x-apikey": VT_API_KEY
+}
 
 # ✅ Endpoint de prueba
 @app.route("/", methods=["GET"])
 def home():
-    return "🚀 API de Hybrid Analysis activa"
+    return "🚀 API con VirusTotal activa"
 
-# ✅ Endpoint simplificado para Flutter
+# ✅ Subida de archivo y análisis
 @app.route("/analyze_file", methods=["POST"])
-def analizar_archivo_para_flutter():
+def analizar_archivo():
     if 'file' not in request.files:
         return "No se envió ningún archivo", 400
 
     archivo = request.files['file']
     files = {
-        'file': (archivo.filename, archivo.stream),
-        'environment_id': (None, '310')  # ✅ Agregado aquí (310 = Windows 10 64-bit)
-    }
-    headers = {
-        "User-Agent": "Falcon Sandbox",
-        "api-key": API_KEY
+        "file": (archivo.filename, archivo.stream)
     }
 
-    # Subir archivo a Hybrid Analysis
+    # 🔄 Enviar archivo a VirusTotal
     respuesta = requests.post(
-        "https://www.hybrid-analysis.com/api/v2/submit/file",
+        "https://www.virustotal.com/api/v3/files",
         headers=headers,
         files=files
     )
 
-    # 🔍 Si falla la subida, mostrar detalles de error
     if respuesta.status_code != 200:
-        print("❌ Error al subir archivo a Hybrid Analysis:")
+        print("❌ Error al subir archivo a VirusTotal")
         print("Código:", respuesta.status_code)
         print("Respuesta:", respuesta.text)
         return jsonify({
-            "error": "Falló la subida",
+            "error": "Fallo en subida",
             "status_code": respuesta.status_code,
             "respuesta": respuesta.text
         }), 500
 
-    job_id = respuesta.json().get("job_id")
+    # ✅ Obtener ID de análisis
+    analysis_id = respuesta.json()["data"]["id"]
 
-    # Esperar hasta 10 intentos de resultado
+    # 🔁 Esperar resultado del análisis (consulta por ID)
     for _ in range(10):
-        time.sleep(6)
-        r = requests.get(
-            f"https://www.hybrid-analysis.com/api/v2/report/summary/{job_id}",
+        time.sleep(5)
+        resultado = requests.get(
+            f"https://www.virustotal.com/api/v3/analyses/{analysis_id}",
             headers=headers
         )
-        if r.status_code == 200:
-            data = r.json()
-            threat_score = data.get("threat_score", 0)
-            verdict = data.get("verdict", "").lower()
 
-            if threat_score >= 70 or "malicious" in verdict:
-                return "Archivo sospechoso detectado", 200
-            else:
-                return "Archivo limpio", 200
+        if resultado.status_code == 200:
+            data = resultado.json()
+            status = data["data"]["attributes"]["status"]
+
+            if status == "completed":
+                stats = data["data"]["attributes"]["stats"]
+                malicious = stats.get("malicious", 0)
+                suspicious = stats.get("suspicious", 0)
+
+                if malicious > 0 or suspicious > 0:
+                    return "Archivo sospechoso detectado", 200
+                else:
+                    return "Archivo limpio", 200
 
     return "Tiempo de espera agotado", 408
 

@@ -8,6 +8,11 @@ app = Flask(__name__)
 # ✅ Carga la API KEY desde variable de entorno en Railway
 API_KEY = os.getenv("API_KEY")
 
+# 🔍 Diagnóstico para depurar problemas de API_KEY
+print("🔐 API_KEY cargada:", repr(API_KEY))
+if not API_KEY or len(API_KEY.strip()) < 30:
+    print("❌ ERROR: La API_KEY está vacía o mal configurada")
+
 # ✅ Endpoint de prueba
 @app.route("/", methods=["GET"])
 def home():

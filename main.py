@@ -48,9 +48,9 @@ def analizar_archivo():
     analysis_id = respuesta.json()["data"]["id"]
     print(f"📥 ID del análisis recibido: {analysis_id}")
 
-    # Consultar resultado repetidamente
-    for intento in range(20):  # Hasta 100 segundos (20 x 5)
-        print(f"⌛ Intento {intento + 1}/20 esperando análisis...")
+    # Consultar resultado hasta 10 minutos (120 intentos x 5 segundos)
+    for intento in range(120):
+        print(f"⌛ Intento {intento + 1}/120 esperando análisis...")
         time.sleep(5)
 
         resultado = requests.get(
@@ -80,6 +80,6 @@ def analizar_archivo():
     print("⏱️ Tiempo de espera agotado para ID:", analysis_id)
     return "Tiempo de espera agotado", 408
 
-# ✅ Local (solo si ejecutas localmente)
+# ✅ Ejecutar localmente
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
